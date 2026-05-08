@@ -142,51 +142,135 @@ aegis-crisis/
 
 ---
 
-## Quick Start
+## Commands
 
-### 1. Clone & install
+### Setup (first time only)
 
 ```bash
+# Clone
 git clone https://github.com/ananyap1119/aegis-crisis
 cd aegis-crisis
+
+# Python dependencies
 pip install -r requirements.txt
-```
 
-### 2. Configure
-
-```bash
+# Copy and fill in your env file
 cp .env.example .env
-# Edit .env — at minimum set GROQ_API_KEY and model paths
+# Open .env and set at minimum:
+#   GROQ_API_KEY=your_groq_key_here
+#   FIRE_MODEL_PATH=path/to/best.pt
+#   PERSON_MODEL_PATH=path/to/yolov8n.pt
 ```
 
-### 3. Run the backend
+### Run the backend
 
 ```bash
-# Webcam (HMAC disabled — camera has no embedder)
+# Live webcam — HMAC disabled (use this when camera has no Aegis embedder)
 python main_unified.py --no-hmac
 
-# Run all videos in videos/ folder sequentially
+# Live webcam — specific camera index
+python main_unified.py --video 1 --no-hmac
+
+# Run a single video file
+python main_unified.py --video videos/fire1.mp4 --camera-id fire --no-hmac
+
+# Run all videos in videos/ sequentially (demo/playlist mode)
 python main_unified.py --playlist --no-hmac
 
-# With HMAC enabled (camera must embed watermarks via Aegis embedder)
+# With HMAC watermark verification enabled (camera must run Aegis embedder)
 python main_unified.py --video 0
+
+# Limit frames (useful for testing)
+python main_unified.py --video videos/fire1.mp4 --max-frames 100 --no-hmac
+
+# Full options
+python main_unified.py --help
 ```
 
-The server starts on **http://localhost:5000**.
+Backend starts on **http://localhost:5000**. Check it with:
 
-### 4. Run the frontend
+```bash
+curl http://localhost:5000/api/status
+curl http://localhost:5000/api/tamper_events
+curl http://localhost:5000/api/crisis_events
+```
+
+### Run the frontend
 
 ```bash
 cd frontend
+
+# Install Node dependencies (first time only)
 npm install
+
+# Start dev server
 npm run dev
-# Open http://localhost:5173
+# Opens at http://localhost:5173
+
+# Build for production
+npm run build
+npm run preview   # preview the production build
 ```
 
-### 5. Run tests
+### Run the tests
 
 ```bash
-pytest -q        # 27 tests, all passing
+# Run all 27 tests
+pytest -q
+
+# Verbose output
+pytest -v
+
+# Run a specific test file
+pytest tests/test_integration_pipeline.py -v
+
+# Run only the two new integration tests
+pytest tests/test_integration_pipeline.py -v -k "integration"
+
+# Run with coverage (requires pytest-cov)
+pip install pytest-cov
+pytest --cov=backend --cov-report=term-missing
+```
+
+### Database inspection
+
+```bash
+# View the SQLite database directly
+python -c "
+import sqlite3, json
+conn = sqlite3.connect('data/aegis_crisis.db')
+conn.row_factory = sqlite3.Row
+print('=== tamper_events ===')
+for r in conn.execute('SELECT * FROM tamper_events ORDER BY timestamp DESC LIMIT 5'):
+    print(dict(r))
+print('=== crisis_events ===')
+for r in conn.execute('SELECT * FROM crisis_events ORDER BY timestamp DESC LIMIT 5'):
+    print(dict(r))
+conn.close()
+"
+```
+
+### Useful one-liners
+
+```bash
+# Reset the database (wipe all events)
+python -c "import os; os.remove('data/aegis_crisis.db') if os.path.exists('data/aegis_crisis.db') else None; import db; db.init_db(); print('DB reset')"
+
+# Check tamper events via API
+curl -s http://localhost:5000/api/tamper_events | python -m json.tool
+
+# Register a camera via API
+curl -s -X POST http://localhost:5000/api/start_camera \
+  -H "Content-Type: application/json" \
+  -d '{"camera_id": "cam-0", "session_id": "my-session-1"}' | python -m json.tool
+
+# Manual override (escalate an incident)
+curl -s -X POST http://localhost:5000/api/override \
+  -H "Content-Type: application/json" \
+  -d '{"action": "ALERT_FIRE_STATION"}' | python -m json.tool
+
+# Reset incident state
+curl -s -X POST http://localhost:5000/api/reset | python -m json.tool
 ```
 
 ---
