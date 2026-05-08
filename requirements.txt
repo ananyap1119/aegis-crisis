@@ -1,0 +1,33 @@
+# Aegis-Crisis — merged and deduplicated requirements
+
+# Computer vision
+opencv-python
+numpy
+
+# YOLO inference
+ultralytics
+
+# LangGraph + Groq LLM
+langgraph
+langchain-groq
+
+# Web server (unified Flask-SocketIO backend)
+Flask
+Flask-SocketIO
+
+# Environment
+python-dotenv
+
+# Utilities
+tqdm
+pandas
+requests
+Pillow
+
+# Speech recognition (Aegis audio logging — optional, gracefully degraded)
+SpeechRecognition
+PyAudio
+pocketsphinx
+
+# Testing
+pytest
