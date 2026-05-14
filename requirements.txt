@@ -1,4 +1,4 @@
-# Aegis-Crisis — merged and deduplicated requirements
+# SecureEye — Python dependencies
 
 # Computer vision
 opencv-python
@@ -6,6 +6,9 @@ numpy
 
 # YOLO inference
 ultralytics
+
+# SSIM feed freeze detection
+scikit-image
 
 # LangGraph + Groq LLM
 langgraph
@@ -24,10 +27,10 @@ pandas
 requests
 Pillow
 
-# Speech recognition (Aegis audio logging — optional, gracefully degraded)
-SpeechRecognition
-PyAudio
-pocketsphinx
+# Speech recognition (optional — comment out if install fails)
+# SpeechRecognition
+# PyAudio
+# pocketsphinx
 
 # Testing
 pytest

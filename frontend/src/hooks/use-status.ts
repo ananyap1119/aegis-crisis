@@ -28,9 +28,9 @@ export function useStatus() {
         // Merge defensively — backend may not provide every field
         setData((prev: any) => ({
           frame: json.frame ?? prev.frame,
-          status: json.status ?? prev.status,
-          alerts: json.alerts ?? prev.alerts,
-          logs: json.logs ?? prev.logs,
+          status: (json as any).status ?? prev.status,
+          alerts: (json as any).alerts ?? [],
+          logs: (json as any).logs ?? prev.logs,
           metrics: { ...prev.metrics, ...(json.metrics ?? {}) },
           // Aegis-Crisis additions
           tamper_alerts: (json as any).tamper_alerts ?? prev.tamper_alerts ?? [],
@@ -47,8 +47,7 @@ export function useStatus() {
         failedRef.current++;
         if (failedRef.current > 2) {
           setConnected(false);
-          // Fallback to mock so UI stays alive during dev
-          setData(getMockStatus());
+          setData((prev: any) => ({ ...prev, alerts: [], status: "SAFE" }));
         }
       } finally {
         if (!cancelled) timer = setTimeout(tick, POLL_MS);

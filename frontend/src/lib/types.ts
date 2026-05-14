@@ -26,7 +26,7 @@ export interface Metrics {
   uptime: string;
 }
 
-export type TamperType = "blur" | "shake" | "reposition" | "hmac" | "clean";
+export type TamperType = "blackout" | "lens_spray" | "feed_freeze" | "reposition" | "clean" | "glare";
 
 export interface TamperEvent {
   id: number;
@@ -43,6 +43,7 @@ export interface CameraIntegrityStatus {
   tampered: boolean;
   tamper_type?: TamperType;
   hmac_valid: boolean;
+  glare_rescued?: boolean;
   last_checked: string;
 }
 

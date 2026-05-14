@@ -6,6 +6,7 @@ import { AlertsPanel } from "@/components/crisis/AlertsPanel";
 import { AgentTimeline } from "@/components/crisis/AgentTimeline";
 import { MetricsStrip } from "@/components/crisis/MetricsStrip";
 import { IntegrityPanel } from "@/components/crisis/IntegrityPanel";
+import { DemoPanel } from "@/components/crisis/DemoPanel";
 
 export const Route = createFileRoute("/")({
   component: CommandCenter,
@@ -35,10 +36,12 @@ function CommandCenter() {
           </div>
         </div>
 
+        <DemoPanel />
+
         <AgentTimeline logs={data.logs} />
 
         <footer className="pt-4 text-center font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground/60">
-          Aegis-Crisis · Tamper-Resistant Surveillance & Response · for authorized operators only
+          SecureEye · Tamper-Resistant Surveillance & AI Crisis Response · for authorized operators only
         </footer>
       </main>
     </div>

@@ -9,6 +9,10 @@ import numpy as np
 import cv2
 from dotenv import load_dotenv
 
+import gate1_fire
+import gate1_fall
+from frame_buffer import push_frame, get_pre_event_frames
+
 from pipeline_support import (
     DEFAULT_CAMERA_ID,
     VisionEvent,
@@ -395,20 +399,102 @@ def process_frame(
     camera_id: str = DEFAULT_CAMERA_ID,
     frame_index: int = 0,
 ) -> VisionEvent:
+    # Always push raw frame to circular buffer before detection
+    push_frame(camera_id, frame)
+
     event = create_vision_event(camera_id=camera_id, frame_index=frame_index)
 
     person_confidence = 0.0
-    fire_confidence = 0.0
+    fire_confidence   = 0.0
+    person_boxes      = []
 
     if "fire" in camera_id.lower():
         fire_confidence = detect_fire_and_smoke(frame, event, camera_id)
     elif "fall" in camera_id.lower() or "person" in camera_id.lower():
-        person_confidence, _ = detect_person_and_fall(frame, event)
+        person_confidence, person_boxes = detect_person_and_fall(frame, event)
     else:
-        person_confidence, _ = detect_person_and_fall(frame, event)
+        person_confidence, person_boxes = detect_person_and_fall(frame, event)
         fire_confidence = detect_fire_and_smoke(frame, event, camera_id)
 
     event["confidence"] = max(person_confidence, fire_confidence)
+
+    # ── Gate 1 fire pre-screen ────────────────────────────────────────────────
+    if event["fire"] or event["smoke"]:
+        # Build fire bounding box from the detect pass (first fire box)
+        fire_box = None
+        try:
+            fire_model, fire_classes, smoke_classes, _ = _get_fire_model_bundle()
+            results = fire_model.predict(frame, conf=FIRE_CONFIDENCE_THRESHOLD,
+                                         imgsz=INFERENCE_IMAGE_SIZE, verbose=False)
+            for res in results:
+                for box in res.boxes:
+                    if int(box.cls[0]) == FIRE_CLASS_ID:
+                        x1, y1, x2, y2 = map(int, box.xyxy[0])
+                        fire_box = (x1, y1, x2, y2)
+                        break
+                if fire_box:
+                    break
+        except Exception:
+            pass
+
+        tier, score, _ = gate1_fire.evaluate(
+            frame, camera_id, fire_box,
+            smoke_detected=event["smoke"],
+            fire_confidence=event["fire_confidence"],
+        )
+        event["fire_tier"]        = tier
+        event["fire_gate1_score"] = score
+
+        # Tier 3 → email auto-dispatch (no human review)
+        if tier == "TIER_3":
+            try:
+                from gate2_email import send_tier3_fire
+                send_tier3_fire(camera_id, event["fire_confidence"],
+                                os.getenv("CRISIS_LOCATION", "unknown"))
+            except Exception:
+                pass
+
+        # Tier 2 → Gate 2 email review
+        elif tier == "TIER_2":
+            try:
+                from gate2_email import send_fire_review
+                from clip_writer import make_fire_clip
+                import os
+                pre = get_pre_event_frames(camera_id, seconds=5)
+                send_fire_review(camera_id, None, event["fire_confidence"],
+                                 os.getenv("CRISIS_LOCATION", "unknown"))
+            except Exception:
+                pass
+    else:
+        gate1_fire.evaluate(frame, camera_id, None, False)  # reset on no-detection
+        event["fire_tier"]        = "SAFE"
+        event["fire_gate1_score"] = 0.0
+
+    # ── Gate 1 fall watch window ──────────────────────────────────────────────
+    if event["fall_detected"] or event["person"]:
+        person_box = person_boxes[0] if person_boxes else None
+        fall_state, fall_details = gate1_fall.evaluate(
+            camera_id,
+            fall_detected=event["fall_detected"],
+            fall_confidence=person_confidence,
+            person_box=person_box,
+        )
+        event["fall_gate1_state"] = fall_state
+
+        # Escalate → Gate 2 email review
+        if fall_state == "ESCALATE":
+            try:
+                from gate2_email import send_fall_review
+                import os
+                send_fall_review(camera_id, None,
+                                 fall_details.get("elapsed_s", 0),
+                                 os.getenv("CRISIS_LOCATION", "unknown"))
+                gate1_fall.reset_camera(camera_id)
+            except Exception:
+                pass
+    else:
+        event["fall_gate1_state"] = "IDLE"
+
     log_payload(logger, logging.DEBUG, "vision_event", event)
     return event
 

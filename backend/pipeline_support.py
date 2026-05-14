@@ -61,6 +61,10 @@ class VisionEvent(TypedDict):
     # Tamper integrity fields added by tamper_agent before crisis pipeline
     tamper_status: bool
     tamper_reason: str
+    # Gate 1 pre-screen results
+    fire_tier: str        # TIER_1 | TIER_2 | TIER_3 | SAFE
+    fire_gate1_score: float
+    fall_gate1_state: str  # IDLE | WATCHING | ESCALATE | SUPPRESSED
 
 
 class SocialSignal(TypedDict):
@@ -152,6 +156,9 @@ def create_vision_event(camera_id: str = DEFAULT_CAMERA_ID, frame_index: int = 0
         "validation_reason": "no_signal",
         "tamper_status": False,
         "tamper_reason": "",
+        "fire_tier": "SAFE",
+        "fire_gate1_score": 0.0,
+        "fall_gate1_state": "IDLE",
     }
 
 

@@ -11,10 +11,10 @@ export function Header({ status, connected }: { status: SystemStatus; connected:
         </div>
         <div>
           <h1 className="text-sm font-semibold tracking-tight text-foreground">
-            AI Crisis Command Center
+            SecureEye
           </h1>
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-            v2.4 · {connected ? "stream connected" : "simulation mode"}
+            v3.0 · {connected ? "stream connected" : "simulation mode"}
           </p>
         </div>
       </div>
